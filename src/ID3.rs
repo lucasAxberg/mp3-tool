@@ -10,6 +10,24 @@ fn header_exists(file: &[u8]) -> bool {
     file[6..].iter().all(|x| *x < 128)                     // Size in sync-safe int
 }
 
+struct Reader {
+    bytes: Vec<u8>,
+    index: usize
+}
+
+impl Default for Reader {
+    fn default() -> Self {
+        Self {bytes: Vec::new(), index: 0}   
+    }
+}
+
+impl Reader {
+    fn load(mut self, bytes: &[u8]) -> Self {
+        self.bytes.append(&mut bytes.to_vec());
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
