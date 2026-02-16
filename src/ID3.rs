@@ -7,7 +7,7 @@ fn header_exists(file: &[u8]) -> bool {
     file[3] == 3 &&                                        // Major ver
     file[4] == 0 &&                                        // Minor ver
     (0..5).map(|x| (1 << x) & file[5]).all(|x| x == 0) &&  // Only 3 flag bits allowed
-    file[6..].iter().all(|x| *x < 128)                     // Size in sync-safe int
+    file[6..10].iter().all(|x| *x < 128)                   // Size in sync-safe int
 }
 
 struct Reader {
