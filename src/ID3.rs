@@ -45,6 +45,33 @@ impl Reader {
 
 }
 
+struct Header {
+    major_ver: u8,
+    minor_ver: u8,
+    flags: u8,
+    size: [u8; 4]
+}
+
+impl Header {
+    fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        // Return none if no valid header
+        if header_exists(bytes) == false {
+            return None;
+        }
+
+        Some(Self{
+            major_ver: bytes[3],
+            minor_ver: bytes[4],
+            flags: bytes[5],
+            size: [bytes[6], bytes[7], bytes[8], bytes[9]],
+        })
+    }
+
+    fn size(&self) -> u64 {
+        (0..4).map(|x| { (self.size[x] as u64) << 7*(3-x) }).sum()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -89,5 +116,17 @@ mod tests {
         let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
         let _ = reader.read_n_bytes(7);
         assert_eq!(reader.index, 5);
+    }
+
+    #[test]
+    fn construct_header() {
+        let header = Header::from_bytes(&[0x49, 0x44, 0x33, 0x03, 0x00, 0xE0, 0x00, 0x08, 0x2e, 0x37]).unwrap();
+        assert_eq!((header.major_ver, header.minor_ver, header.flags, header.size), (3, 0, 0b_11100000, [0, 8, 46, 55]));
+    }
+
+    #[test]
+    fn header_sync_safe_size() {
+        let header = Header::from_bytes(&[0x49, 0x44, 0x33, 0x03, 0x00, 0xE0, 0x00, 0x08, 0x2e, 0x37]).unwrap();
+        assert_eq!(header.size(), 137015);
     }
 } 
