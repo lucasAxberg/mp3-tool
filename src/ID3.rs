@@ -70,6 +70,21 @@ impl Header {
     fn size(&self) -> u64 {
         (0..4).map(|x| { (self.size[x] as u64) << 7*(3-x) }).sum()
     }
+
+    fn unsynchronisation(&self) -> bool {
+        // Check if first flag bit is set
+        (self.flags & 0b_10000000) >> 7 == 1
+    }
+
+    fn extended_header(&self) -> bool {
+        // Check if second flag bit is set
+        (self.flags & 0b_01000000) >> 6 == 1
+    }
+
+    fn experimental(&self) -> bool {
+        // Check if third flag bit is set
+        (self.flags & 0b_00100000) >> 5 == 1
+    }
 }
 
 #[cfg(test)]
@@ -128,5 +143,11 @@ mod tests {
     fn header_sync_safe_size() {
         let header = Header::from_bytes(&[0x49, 0x44, 0x33, 0x03, 0x00, 0xE0, 0x00, 0x08, 0x2e, 0x37]).unwrap();
         assert_eq!(header.size(), 137015);
+    }
+
+    #[test]
+    fn header_flag_parsing() {
+        let header = Header::from_bytes(&[0x49, 0x44, 0x33, 0x03, 0x00, 0xE0, 0x00, 0x08, 0x2e, 0x37]).unwrap();
+        assert_eq!((header.unsynchronisation(), header.extended_header(), header.experimental()), (true, true, true));
     }
 } 
