@@ -87,6 +87,43 @@ impl Header {
     }
 }
 
+struct ExtendedHeader {
+    size: [u8; 4],
+    flags: [u8; 2],
+    padding_size: [u8; 4],
+    crc: Option<[u8; 4]>
+}
+
+impl ExtendedHeader {
+    fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        // Skip if note enough bytes to get len
+        if bytes.len() < 4{
+            return None;
+        }
+
+        // Skip if not enough bytes for entire extended header
+        let length: u64 = (0..4).map(|x| {(bytes[x] as u64) << 3-x}).sum();
+        if (bytes.len() as u64) < length + 4 {
+            return None;
+        }
+
+        // Get CRC if it exists
+        let crc = if length == 10 {
+            Some([bytes[10], bytes[11], bytes[12], bytes[13]])
+        } else {
+            None
+        };
+        
+        // Create and return extended header
+        Some(Self{
+            size: [bytes[0], bytes[1], bytes[2], bytes[3]],
+            flags: [bytes[4], bytes[5]],
+            padding_size: [bytes[6], bytes[7], bytes[8], bytes[9]],
+            crc
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -149,5 +186,10 @@ mod tests {
     fn header_flag_parsing() {
         let header = Header::from_bytes(&[0x49, 0x44, 0x33, 0x03, 0x00, 0xE0, 0x00, 0x08, 0x2e, 0x37]).unwrap();
         assert_eq!((header.unsynchronisation(), header.extended_header(), header.experimental()), (true, true, true));
+    }
+
+    #[test]
+    fn construct_extended_header() {
+        let header = ExtendedHeader::from_bytes(&[0x00, 0x00, 0x00, 0x0A, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDE, 0xAD, 0xBE, 0xEF ]).unwrap();
     }
 } 
