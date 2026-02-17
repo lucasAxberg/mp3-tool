@@ -122,6 +122,18 @@ impl ExtendedHeader {
             crc
         })
     }
+
+    fn padding_size(&self) -> u64 {
+        (0..4).map(|i| {(self.padding_size[i] as u64) << 8*(3-i)}).sum()
+    }
+
+    fn size(&self) -> u64 {
+        (0..4).map(|i| {(self.size[i] as u64) << 8*(3-i)}).sum()
+    }
+
+    fn has_padding(&self) -> bool {
+        (self.flags[0] & 0b_10000000) >> 7 == 1
+    }
 }
 
 #[cfg(test)]
@@ -191,5 +203,23 @@ mod tests {
     #[test]
     fn construct_extended_header() {
         let header = ExtendedHeader::from_bytes(&[0x00, 0x00, 0x00, 0x0A, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDE, 0xAD, 0xBE, 0xEF ]).unwrap();
+    }
+
+    #[test]
+    fn extended_header_size() {
+        let header = ExtendedHeader::from_bytes(&[0x00, 0x00, 0x00, 0x0A, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDE, 0xAD, 0xBE, 0xEF ]).unwrap();
+        assert_eq!(header.size(), 10);
+    }
+
+    #[test]
+    fn padding_size() {
+        let header = ExtendedHeader::from_bytes(&[0x00, 0x00, 0x00, 0x0A, 0x80, 0x00, 0x00, 0x00, 0x00, 0x80, 0xDE, 0xAD, 0xBE, 0xEF ]).unwrap();
+        assert_eq!(header.padding_size(), 128);
+    }
+
+    #[test]
+    fn padding_exists() {
+        let header = ExtendedHeader::from_bytes(&[0x00, 0x00, 0x00, 0x0A, 0x80, 0x00, 0x00, 0x00, 0x00, 0x80, 0xDE, 0xAD, 0xBE, 0xEF ]).unwrap();
+        assert_eq!(header.has_padding(), true);
     }
 } 
