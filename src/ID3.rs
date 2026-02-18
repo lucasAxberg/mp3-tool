@@ -1,3 +1,9 @@
+use std::fs::File;
+use std::io;
+use std::io::BufReader;
+use std::io::prelude::*;
+use std::io::{Error, ErrorKind};
+
 fn header_exists(file: &[u8]) -> bool {
     // Data must be atleast 10 bytes
     if file.len() < 10 { return false; }
@@ -11,36 +17,26 @@ fn header_exists(file: &[u8]) -> bool {
 }
 
 struct Reader {
-    bytes: Vec<u8>,
-    index: usize
-}
-
-impl Default for Reader {
-    fn default() -> Self {
-        Self {bytes: Vec::new(), index: 0}   
-    }
+    reader: BufReader<File>,
 }
 
 impl Reader {
-    fn load(mut self, bytes: &[u8]) -> Self {
-        self.bytes.append(&mut bytes.to_vec());
-        self
+    fn from_file(filename: &str) -> io::Result<Self>{
+        let file = File::open(filename)?;
+        let reader = BufReader::new(file);
+        Ok(Self{
+            reader 
+        })
     }
 
-    fn skip_n_bytes(&mut self, n: usize) -> (){
-        self.index = (self.index + n).min(self.bytes.len())
+    fn skip_n_bytes(&mut self, n: usize) -> io::Result<()>{
+        self.reader.seek_relative(n as i64)
     }
 
-    fn read_n_bytes(&mut self, n: usize) -> Vec<u8> {
-        let mut read_bytes = Vec::new();
-        for i in 0..n {
-            let Some(byte) = self.bytes.get(self.index) else {
-                break;
-            };
-            read_bytes.push(*byte);
-            self.index += 1;
-        }
-        read_bytes
+    fn read_n_bytes(&mut self, n: usize) -> io::Result<Vec<u8>> {
+        let mut buf: Vec<u8> = vec![0; n];
+        self.reader.read_exact(&mut buf)?;
+        Ok(buf)
     }
 
 }
@@ -60,6 +56,21 @@ impl Header {
         }
 
         Some(Self{
+            major_ver: bytes[3],
+            minor_ver: bytes[4],
+            flags: bytes[5],
+            size: [bytes[6], bytes[7], bytes[8], bytes[9]],
+        })
+    }
+
+    fn from_reader(reader: &mut Reader) -> io::Result<Self> {
+        let bytes = reader.read_n_bytes(10)?;
+
+        if header_exists(&bytes) == false {
+            return Err(Error::new(ErrorKind::InvalidData, "File contains no ID3 header"));
+        }
+        
+        Ok(Self {
             major_ver: bytes[3],
             minor_ver: bytes[4],
             flags: bytes[5],
@@ -123,6 +134,26 @@ impl ExtendedHeader {
         })
     }
 
+    fn from_reader(reader: &mut Reader) -> io::Result<Self> {
+        let size = reader.read_n_bytes(4)?;
+        let more: u64 = (0..4).map(|x| {(size[x] as u64) << 3-x}).sum();
+        let remaining = reader.read_n_bytes(more as usize)?;
+
+        // Get CRC if header is big enough
+        let crc = if more == 10 {
+            Some([remaining[6], remaining[7], remaining[8], remaining[9]])
+        } else {
+            None
+        };
+
+        Ok(Self{
+            size: [size[0], size[1], size[2], size[3]],
+            flags: [remaining[0], remaining[1]],
+            padding_size: [remaining[2], remaining[3], remaining[4], remaining[5]],
+            crc
+        })
+    }
+
     fn padding_size(&self) -> u64 {
         (0..4).map(|i| {(self.padding_size[i] as u64) << 8*(3-i)}).sum()
     }
@@ -151,47 +182,31 @@ mod tests {
 
     #[test]
     fn read_bytes_in_bounds() {
-        let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
-        assert_eq!(reader.read_n_bytes(3), vec![1, 2, 3]);
-    }
-
-    #[test]
-    fn read_bytes_out_of_bounds() {
-        let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
-        assert_eq!(reader.read_n_bytes(6), vec![1, 2, 3, 4, 5]);
+        let mut reader = Reader::from_file("test/Polygondwanaland.mp3").unwrap();
+        let bytes = reader.read_n_bytes(3).unwrap();
+        assert_eq!(bytes, vec![0x49, 0x44, 0x33]);
     }
 
     #[test]
     fn skip_bytes_in_bounds() {
-        let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
-        reader.skip_n_bytes(3);
-        assert_eq!(reader.index, 3);
-    }
-
-    #[test]
-    fn skip_bytes_out_of_bounds() {
-        let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
-        reader.skip_n_bytes(7);
-        assert_eq!(reader.index, 5);
-    }
-
-    #[test]
-    fn read_bytes_out_of_bounds_index() {
-        let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
-        let _ = reader.read_n_bytes(7);
-        assert_eq!(reader.index, 5);
+        let mut reader = Reader::from_file("test/Polygondwanaland.mp3").unwrap();
+        reader.skip_n_bytes(3).unwrap();
+        let bytes = reader.read_n_bytes(3).unwrap();
+        assert_eq!(bytes, vec![0x03, 0x00, 0x00]);
     }
 
     #[test]
     fn construct_header() {
-        let header = Header::from_bytes(&[0x49, 0x44, 0x33, 0x03, 0x00, 0xE0, 0x00, 0x08, 0x2e, 0x37]).unwrap();
-        assert_eq!((header.major_ver, header.minor_ver, header.flags, header.size), (3, 0, 0b_11100000, [0, 8, 46, 55]));
+        let mut reader = Reader::from_file("test/Polygondwanaland.mp3").unwrap();
+        let header = Header::from_reader(&mut reader).unwrap();
+        assert_eq!((header.major_ver, header.minor_ver, header.flags, header.size), (3, 0, 0b_00000000, [0x00, 0x0b, 0x36, 0x47]));
     }
 
     #[test]
     fn header_sync_safe_size() {
-        let header = Header::from_bytes(&[0x49, 0x44, 0x33, 0x03, 0x00, 0xE0, 0x00, 0x08, 0x2e, 0x37]).unwrap();
-        assert_eq!(header.size(), 137015);
+        let mut reader = Reader::from_file("test/Polygondwanaland.mp3").unwrap();
+        let header = Header::from_reader(&mut reader).unwrap();
+        assert_eq!(header.size(), 187207);
     }
 
     #[test]
