@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io;
 use std::io::BufReader;
 use std::io::prelude::*;
+use std::io::{Error, ErrorKind};
 
 fn header_exists(file: &[u8]) -> bool {
     // Data must be atleast 10 bytes
@@ -55,6 +56,21 @@ impl Header {
         }
 
         Some(Self{
+            major_ver: bytes[3],
+            minor_ver: bytes[4],
+            flags: bytes[5],
+            size: [bytes[6], bytes[7], bytes[8], bytes[9]],
+        })
+    }
+
+    fn from_reader(reader: &mut Reader) -> io::Result<Self> {
+        let bytes = reader.read_n_bytes(10)?;
+
+        if header_exists(&bytes) == false {
+            return Err(Error::new(ErrorKind::InvalidData, "File contains no ID3 header"));
+        }
+        
+        Ok(Self {
             major_ver: bytes[3],
             minor_ver: bytes[4],
             flags: bytes[5],
@@ -161,14 +177,16 @@ mod tests {
 
     #[test]
     fn construct_header() {
-        let header = Header::from_bytes(&[0x49, 0x44, 0x33, 0x03, 0x00, 0xE0, 0x00, 0x08, 0x2e, 0x37]).unwrap();
-        assert_eq!((header.major_ver, header.minor_ver, header.flags, header.size), (3, 0, 0b_11100000, [0, 8, 46, 55]));
+        let mut reader = Reader::from_file("test/Polygondwanaland.mp3").unwrap();
+        let header = Header::from_reader(&mut reader).unwrap();
+        assert_eq!((header.major_ver, header.minor_ver, header.flags, header.size), (3, 0, 0b_00000000, [0x00, 0x0b, 0x36, 0x47]));
     }
 
     #[test]
     fn header_sync_safe_size() {
-        let header = Header::from_bytes(&[0x49, 0x44, 0x33, 0x03, 0x00, 0xE0, 0x00, 0x08, 0x2e, 0x37]).unwrap();
-        assert_eq!(header.size(), 137015);
+        let mut reader = Reader::from_file("test/Polygondwanaland.mp3").unwrap();
+        let header = Header::from_reader(&mut reader).unwrap();
+        assert_eq!(header.size(), 187207);
     }
 
     #[test]
