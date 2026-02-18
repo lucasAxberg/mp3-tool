@@ -134,6 +134,26 @@ impl ExtendedHeader {
         })
     }
 
+    fn from_reader(reader: &mut Reader) -> io::Result<Self> {
+        let size = reader.read_n_bytes(4)?;
+        let more: u64 = (0..4).map(|x| {(size[x] as u64) << 3-x}).sum();
+        let remaining = reader.read_n_bytes(more as usize)?;
+
+        // Get CRC if header is big enough
+        let crc = if more == 10 {
+            Some([remaining[6], remaining[7], remaining[8], remaining[9]])
+        } else {
+            None
+        };
+
+        Ok(Self{
+            size: [size[0], size[1], size[2], size[3]],
+            flags: [remaining[0], remaining[1]],
+            padding_size: [remaining[2], remaining[3], remaining[4], remaining[5]],
+            crc
+        })
+    }
+
     fn padding_size(&self) -> u64 {
         (0..4).map(|i| {(self.padding_size[i] as u64) << 8*(3-i)}).sum()
     }
