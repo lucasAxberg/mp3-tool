@@ -136,6 +136,13 @@ impl ExtendedHeader {
     }
 }
 
+struct Frame {
+    id: [u8; 4],
+    size: [u8; 4],
+    flags: [u8; 2],
+    data: Vec<u8>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
