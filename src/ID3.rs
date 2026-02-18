@@ -1,3 +1,8 @@
+use std::fs::File;
+use std::io;
+use std::io::BufReader;
+use std::io::prelude::*;
+
 fn header_exists(file: &[u8]) -> bool {
     // Data must be atleast 10 bytes
     if file.len() < 10 { return false; }
@@ -11,36 +16,26 @@ fn header_exists(file: &[u8]) -> bool {
 }
 
 struct Reader {
-    bytes: Vec<u8>,
-    index: usize
-}
-
-impl Default for Reader {
-    fn default() -> Self {
-        Self {bytes: Vec::new(), index: 0}   
-    }
+    reader: BufReader<File>,
 }
 
 impl Reader {
-    fn load(mut self, bytes: &[u8]) -> Self {
-        self.bytes.append(&mut bytes.to_vec());
-        self
+    fn from_file(filename: &str) -> io::Result<Self>{
+        let file = File::open(filename)?;
+        let reader = BufReader::new(file);
+        Ok(Self{
+            reader 
+        })
     }
 
-    fn skip_n_bytes(&mut self, n: usize) -> (){
-        self.index = (self.index + n).min(self.bytes.len())
+    fn skip_n_bytes(&mut self, n: usize) -> io::Result<()>{
+        self.reader.seek_relative(n as i64)
     }
 
-    fn read_n_bytes(&mut self, n: usize) -> Vec<u8> {
-        let mut read_bytes = Vec::new();
-        for i in 0..n {
-            let Some(byte) = self.bytes.get(self.index) else {
-                break;
-            };
-            read_bytes.push(*byte);
-            self.index += 1;
-        }
-        read_bytes
+    fn read_n_bytes(&mut self, n: usize) -> io::Result<Vec<u8>> {
+        let mut buf: Vec<u8> = vec![0; n];
+        self.reader.read_exact(&mut buf)?;
+        Ok(buf)
     }
 
 }
@@ -151,35 +146,17 @@ mod tests {
 
     #[test]
     fn read_bytes_in_bounds() {
-        let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
-        assert_eq!(reader.read_n_bytes(3), vec![1, 2, 3]);
-    }
-
-    #[test]
-    fn read_bytes_out_of_bounds() {
-        let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
-        assert_eq!(reader.read_n_bytes(6), vec![1, 2, 3, 4, 5]);
+        let mut reader = Reader::from_file("test/Polygondwanaland.mp3").unwrap();
+        let bytes = reader.read_n_bytes(3).unwrap();
+        assert_eq!(bytes, vec![0x49, 0x44, 0x33]);
     }
 
     #[test]
     fn skip_bytes_in_bounds() {
-        let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
-        reader.skip_n_bytes(3);
-        assert_eq!(reader.index, 3);
-    }
-
-    #[test]
-    fn skip_bytes_out_of_bounds() {
-        let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
-        reader.skip_n_bytes(7);
-        assert_eq!(reader.index, 5);
-    }
-
-    #[test]
-    fn read_bytes_out_of_bounds_index() {
-        let mut reader = Reader::default().load(&[1, 2, 3, 4, 5]);
-        let _ = reader.read_n_bytes(7);
-        assert_eq!(reader.index, 5);
+        let mut reader = Reader::from_file("test/Polygondwanaland.mp3").unwrap();
+        reader.skip_n_bytes(3).unwrap();
+        let bytes = reader.read_n_bytes(3).unwrap();
+        assert_eq!(bytes, vec![0x03, 0x00, 0x00]);
     }
 
     #[test]
