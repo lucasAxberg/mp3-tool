@@ -198,6 +198,10 @@ impl Frame {
             data
         })
     }
+
+    fn id(&self) -> String {
+        string_from_bytes(&self.id).unwrap()
+    }
 }
 
 #[cfg(test)]
