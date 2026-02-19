@@ -4,6 +4,17 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::io::{Error, ErrorKind};
 
+fn string_from_bytes(bytes: &[u8]) -> Option<String>{
+    let mut string = String::new();
+    for byte in bytes {
+        if !byte.is_ascii() {
+            return None;
+        }
+        string.push(*byte as char);
+    }
+    Some(string)
+}
+
 fn header_exists(file: &[u8]) -> bool {
     // Data must be atleast 10 bytes
     if file.len() < 10 { return false; }
@@ -258,5 +269,11 @@ mod tests {
     fn padding_exists() {
         let header = ExtendedHeader::from_bytes(&[0x00, 0x00, 0x00, 0x0A, 0x80, 0x00, 0x00, 0x00, 0x00, 0x80, 0xDE, 0xAD, 0xBE, 0xEF ]).unwrap();
         assert_eq!(header.has_padding(), true);
+    }
+
+    #[test]
+    fn bytes_to_string() {
+        let bytes = [0x54, 0x49, 0x54, 0x32];
+        assert_eq!(string_from_bytes(&bytes), Some("TIT2".to_string()));
     }
 } 
