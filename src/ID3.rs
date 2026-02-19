@@ -174,6 +174,21 @@ struct Frame {
     data: Vec<u8>,
 }
 
+impl Frame {
+    fn from_reader(reader: &mut Reader) -> io::Result<Self> {
+        let header = reader.read_n_bytes(10)?;
+        let size: u64 = (0..4).map(|x| {(header[4+x] as u64) << 3-x}).sum();
+        let data = reader.read_n_bytes(size as usize)?;
+
+        Ok(Self{
+            id: [header[0], header[1], header[2], header[3]],
+            size: [header[4], header[5], header[6], header[7]],
+            flags: [header[8], header[9]],
+            data
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
