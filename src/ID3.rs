@@ -124,7 +124,7 @@ impl ExtendedHeader {
         }
 
         // Skip if not enough bytes for entire extended header
-        let length: u64 = (0..4).map(|x| {(bytes[x] as u64) << 3-x}).sum();
+        let length: u64 = (0..4).map(|x| {(bytes[x] as u64) << 8 * 3-x}).sum();
         if (bytes.len() as u64) < length + 4 {
             return None;
         }
@@ -147,7 +147,7 @@ impl ExtendedHeader {
 
     fn from_reader(reader: &mut Reader) -> io::Result<Self> {
         let size = reader.read_n_bytes(4)?;
-        let more: u64 = (0..4).map(|x| {(size[x] as u64) << 3-x}).sum();
+        let more: u64 = (0..4).map(|x| {(size[x] as u64) << 8 * 3-x}).sum();
         let remaining = reader.read_n_bytes(more as usize)?;
 
         // Get CRC if header is big enough
@@ -188,7 +188,7 @@ struct Frame {
 impl Frame {
     fn from_reader(reader: &mut Reader) -> io::Result<Self> {
         let header = reader.read_n_bytes(10)?;
-        let size: u64 = (0..4).map(|x| {(header[4+x] as u64) << 3-x}).sum();
+        let size: u64 = (0..4).map(|x| {(header[4+x] as u64) << 8 * 3-x}).sum();
         let data = reader.read_n_bytes(size as usize)?;
 
         Ok(Self{
@@ -202,6 +202,12 @@ impl Frame {
     fn id(&self) -> String {
         string_from_bytes(&self.id).unwrap()
     }
+
+    fn size(&self) -> u64 {
+        (0..4).map(|x| {(self.size[x] as u64) << 8 * 3-x}).sum()
+    }
+
+    // TODO: Flag helper functions
 }
 
 #[cfg(test)]
