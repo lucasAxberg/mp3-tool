@@ -248,7 +248,16 @@ impl Frame {
         (0..4).map(|x| {(self.size[x] as u64) << 8*(3-x)}).sum()
     }
 
-    // TODO: Flag helper functions
+    fn parse_text(&self) -> String {
+        let text_type = self.data[0];
+        if text_type == 0 {
+            return ascii_from_bytes(&self.data[1..]);
+        } else if text_type == 1 {
+            return utf16_from_bytes(&self.data[1..]);
+        } else {
+            return String::new();
+        }
+    }
 }
 
 #[cfg(test)]
