@@ -33,6 +33,17 @@ fn utf16_from_bytes(bytes: &[u8]) -> String {
     string
 }
 
+fn ascii_from_bytes(bytes: &[u8]) -> String {
+    let mut string = String::new();
+    for byte in bytes {
+        if *byte == 0 {
+            break;
+        }
+        string.push(*byte as char);
+    }
+    string
+}
+
 fn string_from_bytes(bytes: &[u8]) -> Option<String>{
     let mut string = String::new();
     for byte in bytes {
@@ -321,5 +332,11 @@ mod tests {
     fn bytes_to_utf16() {
         let bytes = [0xFF, 0xFE, 0x4C, 0x00, 0x69, 0x00, 0x62, 0x00, 0x62, 0x00, 0x79, 0x00, 0x20, 0x00, 0x44, 0x00, 0x65, 0x00, 0x43, 0x00, 0x61, 0x00, 0x6D, 0x00, 0x70, 0x00, 0x00, 0x00];
         assert_eq!(utf16_from_bytes(&bytes), "Libby DeCamp".to_string());
+    }
+
+    #[test]
+    fn bytes_to_ascii() {
+        let bytes = [0x43, 0x61, 0x73, 0x74, 0x6C, 0x65, 0x20, 0x52, 0x61, 0x74, 0x00];
+        assert_eq!(ascii_from_bytes(&bytes), "Castle Rat".to_string());
     }
 } 
