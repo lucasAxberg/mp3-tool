@@ -4,6 +4,35 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::io::{Error, ErrorKind};
 
+fn utf16_from_bytes(bytes: &[u8]) -> String {
+    let bom = ((bytes[0] as u16) << 8) + bytes[1] as u16;
+    let normal_order = if bom == 65534 {
+        true
+    } else if bom == 65279 {
+        false
+    } else {
+        return String::new();
+    };
+
+    let mut string = String::new();
+    for i in (2..bytes.len()).step_by(2) {
+        if bytes[i] + bytes[i+1] == 0 {
+            break;
+        }
+
+        let (first, second): (u16, u16) = if !normal_order {
+            (bytes[i] as u16, bytes[i+1] as u16)
+        } else {
+            (bytes[i+1] as u16, bytes[i] as u16)
+        };
+
+        let utf_val = (first << 8) + second;
+        string.push_str(&String::from_utf16_lossy(&[utf_val]));
+    };
+
+    string
+}
+
 fn string_from_bytes(bytes: &[u8]) -> Option<String>{
     let mut string = String::new();
     for byte in bytes {
@@ -124,7 +153,8 @@ impl ExtendedHeader {
         }
 
         // Skip if not enough bytes for entire extended header
-        let length: u64 = (0..4).map(|x| {(bytes[x] as u64) << 8 * 3-x}).sum();
+        let length: u64 = (0..4).map(|x| {(bytes[x] as u64) << 8*(3-x)}).sum();
+        println!("{length}");
         if (bytes.len() as u64) < length + 4 {
             return None;
         }
@@ -147,7 +177,7 @@ impl ExtendedHeader {
 
     fn from_reader(reader: &mut Reader) -> io::Result<Self> {
         let size = reader.read_n_bytes(4)?;
-        let more: u64 = (0..4).map(|x| {(size[x] as u64) << 8 * 3-x}).sum();
+        let more: u64 = (0..4).map(|x| {(size[x] as u64) << 8*(3-x)}).sum();
         let remaining = reader.read_n_bytes(more as usize)?;
 
         // Get CRC if header is big enough
@@ -188,7 +218,7 @@ struct Frame {
 impl Frame {
     fn from_reader(reader: &mut Reader) -> io::Result<Self> {
         let header = reader.read_n_bytes(10)?;
-        let size: u64 = (0..4).map(|x| {(header[4+x] as u64) << 8 * 3-x}).sum();
+        let size: u64 = (0..4).map(|x| {(header[4+x] as u64) << 8*(3-x)}).sum();
         let data = reader.read_n_bytes(size as usize)?;
 
         Ok(Self{
@@ -204,7 +234,7 @@ impl Frame {
     }
 
     fn size(&self) -> u64 {
-        (0..4).map(|x| {(self.size[x] as u64) << 8 * 3-x}).sum()
+        (0..4).map(|x| {(self.size[x] as u64) << 8*(3-x)}).sum()
     }
 
     // TODO: Flag helper functions
@@ -285,5 +315,11 @@ mod tests {
     fn bytes_to_string() {
         let bytes = [0x54, 0x49, 0x54, 0x32];
         assert_eq!(string_from_bytes(&bytes), Some("TIT2".to_string()));
+    }
+
+    #[test]
+    fn bytes_to_utf16() {
+        let bytes = [0xFF, 0xFE, 0x4C, 0x00, 0x69, 0x00, 0x62, 0x00, 0x62, 0x00, 0x79, 0x00, 0x20, 0x00, 0x44, 0x00, 0x65, 0x00, 0x43, 0x00, 0x61, 0x00, 0x6D, 0x00, 0x70, 0x00, 0x00, 0x00];
+        assert_eq!(utf16_from_bytes(&bytes), "Libby DeCamp".to_string());
     }
 } 
