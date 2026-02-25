@@ -8,7 +8,7 @@ impl From<[u8; 4]> for SyncSafe {
 
 #[cfg(test)]
 mod tests {
-    use crate::SyncSafe;
+    use super::*;
 
 
     #[test]
