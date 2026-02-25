@@ -39,6 +39,14 @@ impl TryFrom<Vec<u8>> for SyncSafe {
     }
 }
 
+impl TryFrom<&[u8]> for SyncSafe {
+    type Error = SyncSafeError;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
