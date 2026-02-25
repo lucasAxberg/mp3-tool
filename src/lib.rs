@@ -43,7 +43,11 @@ impl TryFrom<&[u8]> for SyncSafe {
     type Error = SyncSafeError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        todo!()
+        if value.len() != 4 {
+            return Err(SyncSafeError::IncorrectLength(value.len()));
+        };
+
+        Ok(SyncSafe::from([value[0], value[1], value[2], value[3]]))
     }
 }
 
