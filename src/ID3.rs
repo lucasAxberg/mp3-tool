@@ -4,6 +4,57 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::io::{Error, ErrorKind};
 
+fn utf16_from_bytes(bytes: &[u8]) -> String {
+    let bom = ((bytes[0] as u16) << 8) + bytes[1] as u16;
+    let normal_order = if bom == 65534 {
+        true
+    } else if bom == 65279 {
+        false
+    } else {
+        return String::new();
+    };
+
+    let mut string = String::new();
+    for i in (2..bytes.len()).step_by(2) {
+        if bytes[i] + bytes[i+1] == 0 {
+            break;
+        }
+
+        let (first, second): (u16, u16) = if !normal_order {
+            (bytes[i] as u16, bytes[i+1] as u16)
+        } else {
+            (bytes[i+1] as u16, bytes[i] as u16)
+        };
+
+        let utf_val = (first << 8) + second;
+        string.push_str(&String::from_utf16_lossy(&[utf_val]));
+    };
+
+    string
+}
+
+fn ascii_from_bytes(bytes: &[u8]) -> String {
+    let mut string = String::new();
+    for byte in bytes {
+        if *byte == 0 {
+            break;
+        }
+        string.push(*byte as char);
+    }
+    string
+}
+
+fn string_from_bytes(bytes: &[u8]) -> Option<String>{
+    let mut string = String::new();
+    for byte in bytes {
+        if !byte.is_ascii() {
+            return None;
+        }
+        string.push(*byte as char);
+    }
+    Some(string)
+}
+
 fn header_exists(file: &[u8]) -> bool {
     // Data must be atleast 10 bytes
     if file.len() < 10 { return false; }
@@ -113,7 +164,8 @@ impl ExtendedHeader {
         }
 
         // Skip if not enough bytes for entire extended header
-        let length: u64 = (0..4).map(|x| {(bytes[x] as u64) << 3-x}).sum();
+        let length: u64 = (0..4).map(|x| {(bytes[x] as u64) << 8*(3-x)}).sum();
+        println!("{length}");
         if (bytes.len() as u64) < length + 4 {
             return None;
         }
@@ -136,7 +188,7 @@ impl ExtendedHeader {
 
     fn from_reader(reader: &mut Reader) -> io::Result<Self> {
         let size = reader.read_n_bytes(4)?;
-        let more: u64 = (0..4).map(|x| {(size[x] as u64) << 3-x}).sum();
+        let more: u64 = (0..4).map(|x| {(size[x] as u64) << 8*(3-x)}).sum();
         let remaining = reader.read_n_bytes(more as usize)?;
 
         // Get CRC if header is big enough
@@ -164,6 +216,47 @@ impl ExtendedHeader {
 
     fn has_padding(&self) -> bool {
         (self.flags[0] & 0b_10000000) >> 7 == 1
+    }
+}
+
+struct Frame {
+    id: [u8; 4],
+    size: [u8; 4],
+    flags: [u8; 2],
+    data: Vec<u8>,
+}
+
+impl Frame {
+    fn from_reader(reader: &mut Reader) -> io::Result<Self> {
+        let header = reader.read_n_bytes(10)?;
+        let size: u64 = (0..4).map(|x| {(header[4+x] as u64) << 8*(3-x)}).sum();
+        let data = reader.read_n_bytes(size as usize)?;
+
+        Ok(Self{
+            id: [header[0], header[1], header[2], header[3]],
+            size: [header[4], header[5], header[6], header[7]],
+            flags: [header[8], header[9]],
+            data
+        })
+    }
+
+    fn id(&self) -> String {
+        string_from_bytes(&self.id).unwrap()
+    }
+
+    fn size(&self) -> u64 {
+        (0..4).map(|x| {(self.size[x] as u64) << 8*(3-x)}).sum()
+    }
+
+    fn parse_text(&self) -> String {
+        let text_type = self.data[0];
+        if text_type == 0 {
+            return ascii_from_bytes(&self.data[1..]);
+        } else if text_type == 1 {
+            return utf16_from_bytes(&self.data[1..]);
+        } else {
+            return String::new();
+        }
     }
 }
 
@@ -236,5 +329,23 @@ mod tests {
     fn padding_exists() {
         let header = ExtendedHeader::from_bytes(&[0x00, 0x00, 0x00, 0x0A, 0x80, 0x00, 0x00, 0x00, 0x00, 0x80, 0xDE, 0xAD, 0xBE, 0xEF ]).unwrap();
         assert_eq!(header.has_padding(), true);
+    }
+
+    #[test]
+    fn bytes_to_string() {
+        let bytes = [0x54, 0x49, 0x54, 0x32];
+        assert_eq!(string_from_bytes(&bytes), Some("TIT2".to_string()));
+    }
+
+    #[test]
+    fn bytes_to_utf16() {
+        let bytes = [0xFF, 0xFE, 0x4C, 0x00, 0x69, 0x00, 0x62, 0x00, 0x62, 0x00, 0x79, 0x00, 0x20, 0x00, 0x44, 0x00, 0x65, 0x00, 0x43, 0x00, 0x61, 0x00, 0x6D, 0x00, 0x70, 0x00, 0x00, 0x00];
+        assert_eq!(utf16_from_bytes(&bytes), "Libby DeCamp".to_string());
+    }
+
+    #[test]
+    fn bytes_to_ascii() {
+        let bytes = [0x43, 0x61, 0x73, 0x74, 0x6C, 0x65, 0x20, 0x52, 0x61, 0x74, 0x00];
+        assert_eq!(ascii_from_bytes(&bytes), "Castle Rat".to_string());
     }
 } 
