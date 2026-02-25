@@ -2,7 +2,13 @@ struct SyncSafe(u32);
 
 impl From<[u8; 4]> for SyncSafe {
     fn from(value: [u8; 4]) -> Self {
-        todo!()
+        let mut val: u32 = 0;
+        for i in 0..4 {
+            let bit_mask: u8 = 0b_01111111;
+            let shift_offset: usize = 7 * (3-i);
+            val |= ((value[i] & bit_mask) as u32) << shift_offset; 
+        }
+        Self(val)
     }
 }
 
