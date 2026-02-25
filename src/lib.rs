@@ -1,6 +1,6 @@
 use std::fmt;
 
-
+#[derive(Clone, Debug)]
 enum SyncSafeError {
     IncorrectLength(usize)
 }
@@ -28,10 +28,14 @@ impl From<[u8; 4]> for SyncSafe {
 }
 
 impl TryFrom<Vec<u8>> for SyncSafe {
-    type Error = std::io::Error;
+    type Error = SyncSafeError;
 
     fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
-        todo!()
+        if value.len() != 4 {
+            return Err(SyncSafeError::IncorrectLength(value.len()));
+        };
+
+        Ok(SyncSafe::from([value[0], value[1], value[2], value[3]]))
     }
 }
 
