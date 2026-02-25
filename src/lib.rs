@@ -53,7 +53,14 @@ impl TryFrom<&[u8]> for SyncSafe {
 
 impl From<SyncSafe> for Vec<u8> {
     fn from(value: SyncSafe) -> Self {
-        todo!()
+        let bit_mask: u8 = 0b_01111111;
+        let mut bytes: Vec<u8> = Vec::new();
+        for i in 0..4 {
+            let shift_offset: usize = 7 * (3-i);
+            bytes.push(((value.0 >> shift_offset) as u8) & bit_mask);
+        };
+
+        bytes
     }
 }
 
