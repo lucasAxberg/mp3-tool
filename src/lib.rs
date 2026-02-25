@@ -1,3 +1,18 @@
+use std::fmt;
+
+
+enum SyncSafeError {
+    IncorrectLength(usize)
+}
+
+impl fmt::Display for SyncSafeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Self::IncorrectLength(length) => write!(f, "expected '4' given: '{}'", length)
+        }
+    }
+}
+
 struct SyncSafe(u32);
 
 impl From<[u8; 4]> for SyncSafe {
