@@ -69,4 +69,20 @@ mod tests {
     fn parse_sync_safe_panics_from_invalid_vec() {
         SyncSafe::try_from(vec![0b_11101110, 0b_11101110, 0b_11101110]).unwrap();
     }
+
+    #[test]
+    fn parse_sync_safe_from_valid_slice_of_valid_bytes() {
+        assert_eq!(SyncSafe::try_from([0b_01101110, 0b_01101110, 0b_01101110, 0b_01101110].as_slice()).unwrap().0, 0b_00001101_11011011_10110111_01101110)
+    }
+
+    #[test]
+    fn parse_sync_safe_from_valid_slice_of_invalid_bytes() {
+        assert_eq!(SyncSafe::try_from([0b_11101110, 0b_11101110, 0b_11101110, 0b_11101110].as_slice()).unwrap().0, 0b_00001101_11011011_10110111_01101110)
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_sync_safe_panics_from_invalid_slice() {
+        SyncSafe::try_from([0b_11101110, 0b_11101110, 0b_11101110].as_slice()).unwrap();
+    }
 }
