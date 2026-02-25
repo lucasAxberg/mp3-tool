@@ -51,6 +51,12 @@ impl TryFrom<&[u8]> for SyncSafe {
     }
 }
 
+impl From<SyncSafe> for Vec<u8> {
+    fn from(value: SyncSafe) -> Self {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,5 +102,14 @@ mod tests {
     #[should_panic]
     fn parse_sync_safe_panics_from_invalid_slice() {
         SyncSafe::try_from([0b_11101110, 0b_11101110, 0b_11101110].as_slice()).unwrap();
+    }
+
+    #[test]
+    fn vec_of_bytes_from_valid_sync_safe() {
+        assert_eq!(Vec::<u8>::from(SyncSafe(0b_00001101_11011011_10110111_01101110)), vec![0b_01101110, 0b_01101110, 0b_01101110, 0b_01101110])
+    }
+    #[test]
+    fn vec_of_bytes_from_invalid_sync_safe() {
+        assert_eq!(Vec::<u8>::from(SyncSafe(0b_11111101_11011011_10110111_01101110)), vec![0b_01101110, 0b_01101110, 0b_01101110, 0b_01101110])
     }
 }
