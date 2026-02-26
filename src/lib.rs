@@ -130,6 +130,18 @@ impl Header {
         bytes[5] & 0b_00011111 == 0b_00000000 &&
         bytes[6..10].iter().all(|x| x < &0x80)
     }
+
+    fn unsynchronisation(&self) -> bool {
+        todo!();
+    }
+
+    fn extended_header(&self) -> bool {
+        todo!();
+    }
+
+    fn experimental(&self) -> bool {
+        todo!();
+    }
 }
 
 #[cfg(test)]
@@ -236,5 +248,26 @@ mod tests {
     fn parse_header_from_too_many_bytes() {
         let bytes: [u8; 11] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x36, 0x47, 0xFF];
         Header::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    fn header_unsynchronisation_flag_is_set() {
+        let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0x03, 0x00, 0b_10000000, 0x00, 0x0B, 0x36, 0x47];
+        let header = Header::read_from(&mut bytes.as_slice()).unwrap();
+        assert!(header.unsynchronisation());
+    }
+
+    #[test]
+    fn header_extended_header_flag_is_set() {
+        let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0x03, 0x00, 0b_01000000, 0x00, 0x0B, 0x36, 0x47];
+        let header = Header::read_from(&mut bytes.as_slice()).unwrap();
+        assert!(header.extended_header());
+    }
+
+    #[test]
+    fn header_experimental_flag_is_set() {
+        let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0x03, 0x00, 0b_00100000, 0x00, 0x0B, 0x36, 0x47];
+        let header = Header::read_from(&mut bytes.as_slice()).unwrap();
+        assert!(header.experimental());
     }
 }
