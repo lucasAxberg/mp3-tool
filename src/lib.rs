@@ -1,4 +1,5 @@
 use std::fmt;
+use std::io::{self, Read};
 
 #[derive(Clone, Debug)]
 /// Errors for the sync-safe integer data type
@@ -77,6 +78,19 @@ impl From<SyncSafe> for Vec<u8> {
     }
 }
 
+struct Header {
+    identifier: [u8; 3],
+    version: [u8; 2],
+    flags: u8,
+    size: SyncSafe
+}
+
+impl Header {
+    fn read_from(reader: &mut impl Read) -> io::Result<Self> {
+        todo!();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,5 +145,39 @@ mod tests {
     #[test]
     fn vec_of_bytes_from_invalid_sync_safe() {
         assert_eq!(Vec::<u8>::from(SyncSafe(0b_11111101_11011011_10110111_01101110)), vec![0b_01101110, 0b_01101110, 0b_01101110, 0b_01101110])
+    }
+
+    #[test]
+    fn parse_header_from_valid_bytes() {
+        let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x36, 0x47];
+        Header::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_header_panics_from_invalid_identifier() {
+        let bytes: [u8; 10] = [0x48, 0x43, 0x32, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x36, 0x47];
+        Header::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_header_panics_from_invalid_version() {
+        let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0xFF, 0x00, 0x00, 0x00, 0x0B, 0x36, 0x47];
+        Header::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_header_panics_from_invalid_flags() {
+        let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0x03, 0x00, 0xFF, 0x00, 0x0B, 0x36, 0x47];
+        Header::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_header_panics_from_invalid_size() {
+        let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x80, 0x47];
+        Header::read_from(&mut bytes.as_slice()).unwrap();
     }
 }
