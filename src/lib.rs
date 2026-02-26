@@ -169,6 +169,13 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn parse_header_from_invalid_bytes() {
+        let bytes: [u8; 10] = [0x49, 0x43, 0x32, 0x03, 0xFF, 0xFF, 0x00, 0x81, 0x36, 0x47];
+        Header::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
     fn valid_header_false_on_invalid_identifier() {
         let bytes: [u8; 10] = [0x48, 0x43, 0x32, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x36, 0x47];
         assert!(!Header::valid_bytes(bytes));
