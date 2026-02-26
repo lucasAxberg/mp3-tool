@@ -17,8 +17,11 @@ impl fmt::Display for SyncSafeError {
 }
 
 #[derive(Clone, Debug)]
+/// Errors for the ID3 data structure creation functions
 enum ID3Error {
+    /// Did not find a valid header in the 10 bytes read
     HeaderNotFound,
+    /// Was not able to read the amount of bytes needed
     NotEnoughBytes,
 }
 
@@ -102,9 +105,11 @@ struct Header {
 
 impl Header {
     fn read_from(reader: &mut impl Read) -> Result<Self, ID3Error> {
+        // Read 10 bytes from reader, or return error if not enough bytes
         let mut bytes: [u8; 10] = [0; 10];
         reader.read_exact(&mut bytes).map_err(|_| ID3Error::NotEnoughBytes)?;
 
+        // Return error if header does not match pattern of valid header
         if Self::valid_bytes(bytes) == false {
             return Err(ID3Error::HeaderNotFound);
         };
@@ -118,6 +123,8 @@ impl Header {
     }
 
     fn valid_bytes(bytes: [u8; 10]) -> bool {
+        // Checks if 10 bytes matches specification given at:
+        // https://id3.org/id3v2.3.0#ID3v2_header
         bytes[0..3] == [0x49, 0x44, 0x33] &&
         bytes[3..5].iter().all(|x| x < &0xFF) &&
         bytes[5] & 0b_00011111 == 0b_00000000 &&
