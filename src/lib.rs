@@ -132,14 +132,17 @@ impl Header {
     }
 
     fn unsynchronisation(&self) -> bool {
+        // Check if bit 'a' in flag is set (%abc00000)
         self.flags & 0b_1000_0000 == 0b_1000_0000 
     }
 
     fn extended_header(&self) -> bool {
+        // Check if bit 'b' in flag is set (%abc00000)
         self.flags & 0b_0100_0000 == 0b_0100_0000 
     }
 
     fn experimental(&self) -> bool {
+        // Check if bit 'c' in flag is set (%abc00000)
         self.flags & 0b_0010_0000 == 0b_0010_0000 
     }
 }
