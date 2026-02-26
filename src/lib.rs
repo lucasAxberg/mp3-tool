@@ -87,7 +87,15 @@ struct Header {
 
 impl Header {
     fn read_from(reader: &mut impl Read) -> io::Result<Self> {
-        todo!();
+        let mut bytes: [u8; 10] = [0; 10];
+        reader.read_exact(&mut bytes)?;
+
+        Ok(Self {
+            identifier: [bytes[0], bytes[1], bytes[2]],
+            version: [bytes[3], bytes[4]],
+            flags: bytes[6],
+            size: SyncSafe::try_from(&bytes[6..10]).unwrap()
+        })
     }
 }
 
