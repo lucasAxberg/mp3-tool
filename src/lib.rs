@@ -97,6 +97,13 @@ impl Header {
             size: SyncSafe::try_from(&bytes[6..10]).unwrap()
         })
     }
+
+    fn valid_bytes(bytes: [u8; 10]) -> bool {
+        bytes[0..3] == [0x49, 0x44, 0x33] &&
+        bytes[3..5].iter().all(|x| x < &0xFF) &&
+        bytes[5] & 0b_00011111 == 0b_00000000 &&
+        bytes[6..10].iter().all(|x| x < &0x80)
+    }
 }
 
 #[cfg(test)]
@@ -162,31 +169,27 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn parse_header_panics_from_invalid_identifier() {
+    fn valid_header_false_on_invalid_identifier() {
         let bytes: [u8; 10] = [0x48, 0x43, 0x32, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x36, 0x47];
-        Header::read_from(&mut bytes.as_slice()).unwrap();
+        assert!(!Header::valid_bytes(bytes));
     }
 
     #[test]
-    #[should_panic]
-    fn parse_header_panics_from_invalid_version() {
+    fn valid_header_false_on_invalid_version() {
         let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0xFF, 0x00, 0x00, 0x00, 0x0B, 0x36, 0x47];
-        Header::read_from(&mut bytes.as_slice()).unwrap();
+        assert!(!Header::valid_bytes(bytes));
     }
 
     #[test]
-    #[should_panic]
-    fn parse_header_panics_from_invalid_flags() {
+    fn valid_header_false_on_invalid_flags() {
         let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0x03, 0x00, 0xFF, 0x00, 0x0B, 0x36, 0x47];
-        Header::read_from(&mut bytes.as_slice()).unwrap();
+        assert!(!Header::valid_bytes(bytes));
     }
 
     #[test]
-    #[should_panic]
-    fn parse_header_panics_from_invalid_size() {
+    fn valid_header_false_on_invalid_size() {
         let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x80, 0x47];
-        Header::read_from(&mut bytes.as_slice()).unwrap();
+        assert!(!Header::valid_bytes(bytes));
     }
 
     #[test]
