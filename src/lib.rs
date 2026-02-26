@@ -1,5 +1,5 @@
 use std::fmt;
-use std::io::{self, Read};
+use std::io::Read;
 
 #[derive(Clone, Debug)]
 /// Errors for the sync-safe integer data type
@@ -12,6 +12,21 @@ impl fmt::Display for SyncSafeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Self::IncorrectLength(length) => write!(f, "expected '4' given: '{}'", length)
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+enum ID3Error {
+    HeaderNotFound,
+    NotEnoughBytes,
+}
+
+impl fmt::Display for ID3Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Self::HeaderNotFound => write!(f, "Header not found in the given bytes"),
+            Self::NotEnoughBytes => write!(f, "Not enough bytes to parse in reader")
         }
     }
 }
@@ -86,10 +101,14 @@ struct Header {
 }
 
 impl Header {
-    fn read_from(reader: &mut impl Read) -> io::Result<Self> {
+    fn read_from(reader: &mut impl Read) -> Result<Self, ID3Error> {
         let mut bytes: [u8; 10] = [0; 10];
-        reader.read_exact(&mut bytes)?;
+        reader.read_exact(&mut bytes).map_err(|_| ID3Error::NotEnoughBytes)?;
 
+        if Self::valid_bytes(bytes) == false {
+            return Err(ID3Error::HeaderNotFound);
+        };
+        
         Ok(Self {
             identifier: [bytes[0], bytes[1], bytes[2]],
             version: [bytes[3], bytes[4]],
@@ -202,13 +221,13 @@ mod tests {
     #[test]
     #[should_panic]
     fn parse_header_panics_from_invalid_reader_length() {
-        let bytes: [u8; 9] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x80];
+        let bytes: [u8; 9] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x36];
         Header::read_from(&mut bytes.as_slice()).unwrap();
     }
 
     #[test]
     fn parse_header_from_too_many_bytes() {
-        let bytes: [u8; 11] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x80, 0x47, 0xFF];
+        let bytes: [u8; 11] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x36, 0x47, 0xFF];
         Header::read_from(&mut bytes.as_slice()).unwrap();
     }
 }
