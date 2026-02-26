@@ -1,7 +1,9 @@
 use std::fmt;
 
 #[derive(Clone, Debug)]
+/// Errors for the sync-safe integer data type
 enum SyncSafeError {
+    /// The array of bytes used in convertion is the wrong length
     IncorrectLength(usize)
 }
 
@@ -13,13 +15,17 @@ impl fmt::Display for SyncSafeError {
     }
 }
 
+/// A representation of a sync-safe integer
 struct SyncSafe(u32);
 
 impl From<[u8; 4]> for SyncSafe {
     fn from(value: [u8; 4]) -> Self {
+        // Bit mask ignores most significant bit
+        let bit_mask: u8 = 0b_01111111;
+
+        // Iterate over bytes, mask + shift, then set bits in val 
         let mut val: u32 = 0;
         for i in 0..4 {
-            let bit_mask: u8 = 0b_01111111;
             let shift_offset: usize = 7 * (3-i);
             val |= ((value[i] & bit_mask) as u32) << shift_offset; 
         }
@@ -31,10 +37,12 @@ impl TryFrom<Vec<u8>> for SyncSafe {
     type Error = SyncSafeError;
 
     fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        // Throw IncorrectLength error when length is not 4
         if value.len() != 4 {
             return Err(SyncSafeError::IncorrectLength(value.len()));
         };
 
+        // Move 4 bytes into array and create sync-safe int
         Ok(SyncSafe::from([value[0], value[1], value[2], value[3]]))
     }
 }
@@ -43,17 +51,22 @@ impl TryFrom<&[u8]> for SyncSafe {
     type Error = SyncSafeError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        // Throw IncorrectLength error when length is not 4
         if value.len() != 4 {
             return Err(SyncSafeError::IncorrectLength(value.len()));
         };
 
+        // Move 4 bytes into array and create sync-safe int
         Ok(SyncSafe::from([value[0], value[1], value[2], value[3]]))
     }
 }
 
 impl From<SyncSafe> for Vec<u8> {
     fn from(value: SyncSafe) -> Self {
+        // Bit mask ignores most significant bit
         let bit_mask: u8 = 0b_01111111;
+
+        // Loop 4 times, shifting + masking sync-safe to extract bytes
         let mut bytes: Vec<u8> = Vec::new();
         for i in 0..4 {
             let shift_offset: usize = 7 * (3-i);
