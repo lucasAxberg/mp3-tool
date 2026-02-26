@@ -188,4 +188,17 @@ mod tests {
         let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x80, 0x47];
         Header::read_from(&mut bytes.as_slice()).unwrap();
     }
+
+    #[test]
+    #[should_panic]
+    fn parse_header_panics_from_invalid_reader_length() {
+        let bytes: [u8; 9] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x80];
+        Header::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    fn parse_header_from_too_many_bytes() {
+        let bytes: [u8; 11] = [0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x0B, 0x80, 0x47, 0xFF];
+        Header::read_from(&mut bytes.as_slice()).unwrap();
+    }
 }
