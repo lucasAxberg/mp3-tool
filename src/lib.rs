@@ -117,7 +117,7 @@ impl Header {
         Ok(Self {
             identifier: [bytes[0], bytes[1], bytes[2]],
             version: [bytes[3], bytes[4]],
-            flags: bytes[6],
+            flags: bytes[5],
             size: SyncSafe::try_from(&bytes[6..10]).unwrap()
         })
     }
@@ -132,15 +132,15 @@ impl Header {
     }
 
     fn unsynchronisation(&self) -> bool {
-        todo!();
+        self.flags & 0b_1000_0000 == 0b_1000_0000 
     }
 
     fn extended_header(&self) -> bool {
-        todo!();
+        self.flags & 0b_0100_0000 == 0b_0100_0000 
     }
 
     fn experimental(&self) -> bool {
-        todo!();
+        self.flags & 0b_0010_0000 == 0b_0010_0000 
     }
 }
 
