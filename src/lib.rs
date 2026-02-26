@@ -67,7 +67,7 @@ impl From<SyncSafe> for Vec<u8> {
         let bit_mask: u8 = 0b_01111111;
 
         // Loop 4 times, shifting + masking sync-safe to extract bytes
-        let mut bytes: Vec<u8> = Vec::new();
+        let mut bytes: Vec<u8> = Vec::with_capacity(4);
         for i in 0..4 {
             let shift_offset: usize = 7 * (3-i);
             bytes.push(((value.0 >> shift_offset) as u8) & bit_mask);
