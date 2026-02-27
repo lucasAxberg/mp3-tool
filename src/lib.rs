@@ -190,6 +190,18 @@ impl ExtendedHeader {
     }
 }
 
+struct FrameHeader {
+    frame_id: [u8; 4],
+    size: [u8; 4],
+    flags: [u8; 2]
+}
+
+impl FrameHeader {
+    fn read_from(reader: &mut impl Read) -> Result<Self, ID3Error> {
+        todo!();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -364,5 +376,27 @@ mod tests {
         let bytes: [u8; 10] = [0, 0, 0, 6, 0, 0, 0x01, 0x02, 0x03, 0x04];
         let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
         assert_eq!((ext.size(), ext.padding_size(), ext.crc()), (6, 16909060, None));
+    }
+
+    #[test]
+    fn frame_header_from_valid_bytes() {
+        let bytes: [u8; 10] = [0x54, 0x49, 0x54, 0x32, 0x00, 0x00, 0x00, 0x25, 0x00, 0x00];
+        FrameHeader::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    fn frame_header_from_too_many_bytes() {
+        let bytes: [u8; 11] = [0x54, 0x49, 0x54, 0x32, 0x00, 0x00, 0x00, 0x25, 0x00, 0x00, 0x00];
+        FrameHeader::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    fn frame_header_error_from_not_enough_bytes() {
+        let bytes: [u8; 9] = [0x54, 0x49, 0x54, 0x32, 0x00, 0x00, 0x00, 0x25, 0x00];
+        let frame_header = FrameHeader::read_from(&mut bytes.as_slice());
+        match frame_header {
+            Err(ID3Error::NotEnoughBytes) => assert!(true),
+            _ => assert!(false)
+        }
     }
 }
