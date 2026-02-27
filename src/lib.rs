@@ -147,6 +147,49 @@ impl Header {
     }
 }
 
+struct ExtendedHeader {
+    size: [u8; 4],
+    flags: [u8; 2],
+    padding_size: [u8; 4],
+    crc: Option<[u8; 4]>
+}
+
+impl ExtendedHeader {
+    fn read_from(reader: &mut impl Read) -> Result<Self, ID3Error> {
+        // Read first 10 bytes of extended header, which are same for both types
+        let mut header: [u8; 10] = [0; 10];
+        reader.read_exact(&mut header).map_err(|_| ID3Error::NotEnoughBytes)?;
+
+        // Check size bytes and read crc if size is 10
+        let crc = if header[3] == 10 {
+            let mut crc_bytes: [u8; 4] = [0; 4];
+            reader.read_exact(&mut crc_bytes).map_err(|_| ID3Error::NotEnoughBytes)?;
+            Some(crc_bytes)
+        } else {
+            None
+        };
+
+        Ok(Self{
+            size: [header[0], header[1], header[2], header[3]],
+            flags: [header[4], header[5]],
+            padding_size: [header[6], header[7], header[8], header[9]],
+            crc
+        })
+    }
+
+    fn size(&self) -> u32 {
+        u32::from_be_bytes(self.size)
+    }
+
+    fn crc(&self) -> Option<u32>{
+        Some(u32::from_be_bytes(self.crc?))
+    }
+
+    fn padding_size(&self) -> u32 {
+        u32::from_be_bytes(self.padding_size)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -272,5 +315,54 @@ mod tests {
         let bytes: [u8; 10] = [0x49, 0x44, 0x33, 0x03, 0x00, 0b_00100000, 0x00, 0x0B, 0x36, 0x47];
         let header = Header::read_from(&mut bytes.as_slice()).unwrap();
         assert!(header.experimental());
+    }
+
+    #[test]
+    fn parse_extended_header_from_valid_bytes_without_crc() {
+        let bytes: [u8; 10] = [0, 0, 0, 6, 0, 0, 0, 0, 0, 0];
+        let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+        assert_eq!((ext.size.to_vec(), ext.flags.to_vec(), ext.padding_size.to_vec(), ext.crc), (bytes[0..4].to_vec(), bytes[4..6].to_vec(), bytes[6..10].to_vec(), None));
+    }
+
+    #[test]
+    fn parse_extended_header_from_valid_bytes_with_crc() {
+        let bytes: [u8; 14] = [0, 0, 0, 10, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+        assert_eq!((ext.size.to_vec(), ext.flags.to_vec(), ext.padding_size.to_vec(), ext.crc), (bytes[0..4].to_vec(), bytes[4..6].to_vec(), bytes[6..10].to_vec(), Some([bytes[10], bytes[11], bytes[12], bytes[13]])));
+    }
+
+    #[test]
+    #[should_panic]
+    fn extended_header_from_valid_bytes_with_crc_not_enough_bytes() {
+        let bytes: [u8; 13] = [0, 0, 0, 10, 0x80, 0, 0, 0, 0, 0, 0, 0, 0];
+        ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn extended_header_from_valid_bytes_without_crc_not_enough_bytes() {
+        let bytes: [u8; 9] = [0, 0, 0, 6, 0, 0, 0, 0, 0];
+        ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    fn extended_header_from_valid_bytes_with_crc_too_many_bytes() {
+        let bytes: [u8; 15] = [0, 0, 0, 10, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+        assert_eq!((ext.size.to_vec(), ext.flags.to_vec(), ext.padding_size.to_vec(), ext.crc), (bytes[0..4].to_vec(), bytes[4..6].to_vec(), bytes[6..10].to_vec(), Some([bytes[10], bytes[11], bytes[12], bytes[13]])));
+    }
+
+    #[test]
+    fn extended_header_from_valid_bytes_without_crc_too_many_bytes() {
+        let bytes: [u8; 11] = [0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0];
+        let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+        assert_eq!((ext.size.to_vec(), ext.flags.to_vec(), ext.padding_size.to_vec(), ext.crc), (bytes[0..4].to_vec(), bytes[4..6].to_vec(), bytes[6..10].to_vec(), None));
+    }
+
+    #[test]
+    fn extended_header_getter_functions() {
+        let bytes: [u8; 10] = [0, 0, 0, 6, 0, 0, 0x01, 0x02, 0x03, 0x04];
+        let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+        assert_eq!((ext.size(), ext.padding_size(), ext.crc()), (6, 16909060, None));
     }
 }
