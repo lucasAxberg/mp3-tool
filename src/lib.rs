@@ -209,11 +209,11 @@ impl FrameHeader {
     }
 
     fn size(&self) -> u32 {
-        todo!();
+        u32::from_be_bytes(self.size)
     }
 
     fn id(&self) -> String {
-        todo!();
+        String::from_utf8(self.frame_id.to_vec()).unwrap()
     }
 }
 
