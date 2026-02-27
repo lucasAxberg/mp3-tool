@@ -178,15 +178,15 @@ impl ExtendedHeader {
     }
 
     fn size(&self) -> u32 {
-        todo!();
+        u32::from_be_bytes(self.size)
     }
 
     fn crc(&self) -> Option<u32>{
-        todo!();
+        Some(u32::from_be_bytes(self.crc?))
     }
 
     fn padding_size(&self) -> u32 {
-        todo!();
+        u32::from_be_bytes(self.padding_size)
     }
 }
 
