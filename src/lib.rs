@@ -176,6 +176,18 @@ impl ExtendedHeader {
             crc
         })
     }
+
+    fn size(&self) -> u32 {
+        todo!();
+    }
+
+    fn crc(&self) -> Option<u32>{
+        todo!();
+    }
+
+    fn padding_size(&self) -> u32 {
+        todo!();
+    }
 }
 
 #[cfg(test)]
@@ -345,5 +357,12 @@ mod tests {
         let bytes: [u8; 11] = [0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0];
         let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
         assert_eq!((ext.size.to_vec(), ext.flags.to_vec(), ext.padding_size.to_vec(), ext.crc), (bytes[0..4].to_vec(), bytes[4..6].to_vec(), bytes[6..10].to_vec(), None));
+    }
+
+    #[test]
+    fn extended_header_getter_functions() {
+        let bytes: [u8; 10] = [0, 0, 0, 6, 0, 0, 0x01, 0x02, 0x03, 0x04];
+        let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+        assert_eq!((ext.size(), ext.padding_size(), ext.crc()), (6, 16909060, None));
     }
 }
