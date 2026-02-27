@@ -198,7 +198,14 @@ struct FrameHeader {
 
 impl FrameHeader {
     fn read_from(reader: &mut impl Read) -> Result<Self, ID3Error> {
-        todo!();
+        let mut bytes: [u8; 10] = [0; 10];
+        reader.read_exact(&mut bytes).map_err(|_| ID3Error::NotEnoughBytes)?;
+
+        Ok(Self{
+            frame_id: [bytes[0], bytes[1], bytes[2], bytes[3]],
+            size: [bytes[4], bytes[5], bytes[6], bytes[7]],
+            flags: [bytes[8], bytes[9]]
+        })
     }
 }
 
