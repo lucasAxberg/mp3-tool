@@ -207,6 +207,14 @@ impl FrameHeader {
             flags: [bytes[8], bytes[9]]
         })
     }
+
+    fn size(&self) -> u32 {
+        todo!();
+    }
+
+    fn id(&self) -> String {
+        todo!();
+    }
 }
 
 #[cfg(test)]
@@ -405,5 +413,19 @@ mod tests {
             Err(ID3Error::NotEnoughBytes) => assert!(true),
             _ => assert!(false)
         }
+    }
+
+    #[test]
+    fn frame_header_size() {
+        let bytes: [u8; 10] = [0x54, 0x49, 0x54, 0x32, 0x00, 0x00, 0x00, 0x25, 0x00, 0x00];
+        let head = FrameHeader::read_from(&mut bytes.as_slice()).unwrap();
+        assert_eq!(head.size(), 37)
+    }
+
+    #[test]
+    fn frame_header_id() {
+        let bytes: [u8; 10] = [0x54, 0x49, 0x54, 0x32, 0x00, 0x00, 0x00, 0x25, 0x00, 0x00];
+        let head = FrameHeader::read_from(&mut bytes.as_slice()).unwrap();
+        assert_eq!(head.id(), "TIT2".to_string())
     }
 }
