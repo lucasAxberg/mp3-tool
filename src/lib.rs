@@ -318,4 +318,32 @@ mod tests {
         let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
         assert_eq!((ext.size.to_vec(), ext.flags.to_vec(), ext.padding_size.to_vec(), ext.crc), (bytes[0..4].to_vec(), bytes[4..6].to_vec(), bytes[6..10].to_vec(), Some([bytes[10], bytes[11], bytes[12], bytes[13]])));
     }
+
+    #[test]
+    #[should_panic]
+    fn extended_header_from_valid_bytes_with_crc_not_enough_bytes() {
+        let bytes: [u8; 13] = [0, 0, 0, 10, 0x80, 0, 0, 0, 0, 0, 0, 0, 0];
+        ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn extended_header_from_valid_bytes_without_crc_not_enough_bytes() {
+        let bytes: [u8; 9] = [0, 0, 0, 6, 0, 0, 0, 0, 0];
+        ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+    }
+
+    #[test]
+    fn extended_header_from_valid_bytes_with_crc_too_many_bytes() {
+        let bytes: [u8; 15] = [0, 0, 0, 10, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+        assert_eq!((ext.size.to_vec(), ext.flags.to_vec(), ext.padding_size.to_vec(), ext.crc), (bytes[0..4].to_vec(), bytes[4..6].to_vec(), bytes[6..10].to_vec(), Some([bytes[10], bytes[11], bytes[12], bytes[13]])));
+    }
+
+    #[test]
+    fn extended_header_from_valid_bytes_without_crc_too_many_bytes() {
+        let bytes: [u8; 11] = [0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0];
+        let ext = ExtendedHeader::read_from(&mut bytes.as_slice()).unwrap();
+        assert_eq!((ext.size.to_vec(), ext.flags.to_vec(), ext.padding_size.to_vec(), ext.crc), (bytes[0..4].to_vec(), bytes[4..6].to_vec(), bytes[6..10].to_vec(), None));
+    }
 }
