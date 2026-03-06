@@ -229,11 +229,14 @@ enum FrameType {
 impl FrameType {
     fn internal_data(&self) -> &Vec<u8> {
         match self {
-            Self::URL(data) |
-            Self::Text(data) => {
+            Self::URL(data)
+            | Self::Other(data)
+            | Self::Image(data)
+            | Self::Comment(data)
+            | Self::People(data)
+            | Self::Text(data) => {
                 data
-            },
-            _ => todo!()
+            }
         }
     }
 }
